@@ -74,21 +74,42 @@ namespace oui
 		return code;
 	}
 
-	Point Font::drawText(std::string_view text, const Rectangle & area, float height)
+	Point Font::drawText(const Rectangle & area, std::string_view text, float height, const Color& color)
 	{
 		if (height == 0)
 			height = float(_size);
 		Point head = area.upperLeft;
 
-		glEnable(GL_BLEND);
 		glEnable(GL_TEXTURE_2D);
-		glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 		glBindTexture(GL_TEXTURE_2D, _tex);
 
+		glColor4fv(&color.r);
+		glBegin(GL_QUADS);
 		while (int ch = popCodepoint(text))
 			head.x = _draw_glyph(ch, head, height);
+		glEnd();
+
+		glDisable(GL_TEXTURE_2D);
 
 		return head;
+	}
+	float Font::_draw_glyph(int ch, Point p, float height)
+	{
+		auto& info = _init_glyph(ch);
+
+		const auto s0 = info.offset;
+		const auto s1 = info.width + s0;
+
+		const float width = info.width * font_texture_width * (height / _size);
+		const float x_1 = p.x + width;
+		const float y_1 = p.y + height;
+
+		glTexCoord2f(s0, 0); glVertex2f(p.x, y_1);
+		glTexCoord2f(s1, 0); glVertex2f(x_1, y_1);
+		glTexCoord2f(s1, 1); glVertex2f(x_1, p.y);
+		glTexCoord2f(s0, 1); glVertex2f(p.x, p.y);
+
+		return x_1;
 	}
 
 	HBITMAP rgb_bitmap(HDC dc, int width, int height, void** data)
@@ -158,8 +179,9 @@ namespace oui
 						di += 3;
 					}
 				}
-
+				glEnd();
 				glTexSubImage2D(GL_TEXTURE_2D, 0, _next_offset, 0, width, _size, GL_RGBA, GL_UNSIGNED_BYTE, img.get());
+				glBegin(GL_QUADS);
 			}
 			DeleteObject(dc);
 			DeleteObject(bmp);
@@ -173,26 +195,5 @@ namespace oui
 			info = _glyphs.emplace(ch, new_info).first;
 		}
 		return info->second;
-	}
-
-	float Font::_draw_glyph(int ch, Point p, float height)
-	{
-		auto& info = _init_glyph(ch);
-
-		const auto s0 = info.offset;
-		const auto s1 = info.width + s0;
-
-		const float width = info.width * font_texture_width * (height / _size);
-		const float x_1 = p.x + width;
-		const float y_1 = p.y + height;
-
-		glBegin(GL_TRIANGLE_STRIP);
-		glTexCoord2f(s0, 1); glVertex2f(p.x, p.y);
-		glTexCoord2f(s0, 0); glVertex2f(p.x, y_1);
-		glTexCoord2f(s1, 1); glVertex2f(x_1, p.y);
-		glTexCoord2f(s1, 0); glVertex2f(x_1, y_1);
-		glEnd();
-
-		return x_1;
 	}
 }

@@ -4,7 +4,7 @@
 #include <string_view>
 #include <unordered_map>
 
-#include "point.h"
+#include "oui.h"
 
 struct HFONT__;
 typedef HFONT__* HFONT;
@@ -32,6 +32,10 @@ namespace oui
 		Font(const Font&) = delete;
 		~Font();
 
-		Point drawText(std::string_view, const Rectangle&, float height = 0);
+		Point drawText(const Rectangle&, std::string_view, float height = 0, const Color& = colors::white);
+		Point drawText(const Rectangle& area, std::string_view text, const Color& color, float height = 0) 
+		{
+			return drawText(area, text, height, color);
+		}
 	};
 }

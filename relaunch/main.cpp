@@ -26,18 +26,21 @@ namespace window
 		auto frame_begin = std::chrono::high_resolution_clock::now();
 		static float max_cpu = 0;
 
-		GLint viewport[4];
-		glGetIntegerv(GL_VIEWPORT, viewport);
-
-
-		oui::Rectangle area = 
-		{ 
-			{ float(viewport[0]), float(viewport[1]) },
-			{ float(viewport[0] + viewport[2]), float(viewport[1] + viewport[3]) }
-		};
 
 		glClearColor(0, 0, 0, 1);
 		glClear(GL_COLOR_BUFFER_BIT);
+
+		glEnable(GL_BLEND);
+		glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+
+
+		GLint viewport[4];
+		glGetIntegerv(GL_VIEWPORT, viewport);
+		oui::Rectangle area =
+		{
+			{ float(viewport[0]), float(viewport[1]) },
+			{ float(viewport[0] + viewport[2]), float(viewport[1] + viewport[3]) }
+		};
 
 		glMatrixMode(GL_PROJECTION);
 		glLoadIdentity();
@@ -46,22 +49,16 @@ namespace window
 		glLoadIdentity();
 
 
+		oui::fill(area.popTop(32), oui::colors::blue);
 
-		/* rotate a triangle around */
-		//glClear(GL_COLOR_BUFFER_BIT);
-		//glBegin(GL_TRIANGLES);
-		//glColor3f(1.0f, 0.0f, 0.0f); glVertex2f(0, 1);
-		//glColor3f(0.0f, 1.0f, 0.0f); glVertex2f(-cos(t), -1);
-		//glColor3f(0.0f, 0.0f, 1.0f); glVertex2f(+cos(t), -1);
-		//glEnd();
-		area.upperLeft = font.drawText("Test - \xce\xa9", area);
+		area.upperLeft = font.drawText(area, "Test - \xce\xa9");
 		auto frame_end = std::chrono::high_resolution_clock::now();
 		auto frame_duration = std::chrono::duration<float>(frame_end - frame_begin).count();
 		float cpu = 60 * frame_duration;
 		if (max_cpu < cpu)
 			max_cpu = cpu;
 
-		font.drawText(" render cpu: " + std::to_string(cpu) + " (max: " + std::to_string(max_cpu) + ")", area);
+		font.drawText(area, " render cpu: " + std::to_string(cpu) + " (max: " + std::to_string(max_cpu) + ")");
 
 		if (last_frame_end)
 		{
