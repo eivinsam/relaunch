@@ -12,6 +12,7 @@ palette). */
 #include <unordered_map>
 
 #pragma comment(lib, "opengl32.lib")
+#pragma comment(lib, "glu32.lib")
 
 #include "window.h"
 #include "debug.h"

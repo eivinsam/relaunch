@@ -126,10 +126,13 @@
     <ClCompile Include="debug.cpp" />
     <ClCompile Include="glew.c" />
     <ClCompile Include="main.cpp" />
+    <ClCompile Include="text.cpp" />
     <ClCompile Include="window.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="debug.h" />
+    <ClInclude Include="point.h" />
+    <ClInclude Include="text.h" />
     <ClInclude Include="window.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
