@@ -48,17 +48,35 @@ namespace window
 		glMatrixMode(GL_MODELVIEW);
 		glLoadIdentity();
 
+		auto text_overlay = area;
 
-		oui::fill(area.popTop(32), oui::colors::blue);
+		if (area.height() < area.width())
+		{
+			const auto half_delta = (area.width() - area.height())/2;
+			area.popLeft(half_delta);
+			area.popRight(half_delta);
+		}
+		else
+		{
+			area.popBottom(area.height() - area.width());
+		}
 
-		area.upperLeft = font.drawText(area, "Test - \xce\xa9");
+		for (int i = 0; i < 8; ++i)
+		{
+			auto row = area.popTop(oui::Ratio(1.0f / (8 - i)));
+			for (int j = 0; j < 8; ++j)
+				fill(row.popLeft(oui::Ratio(1.0f / (8 - j))).shrink(oui::Ratio(0.85f)), 
+					 oui::Color{ i / 8.0f, j / 8.0f });
+		}
+
+		text_overlay.upperLeft = font.drawText(text_overlay, "Test - \xce\xa9");
 		auto frame_end = std::chrono::high_resolution_clock::now();
 		auto frame_duration = std::chrono::duration<float>(frame_end - frame_begin).count();
 		float cpu = 60 * frame_duration;
 		if (max_cpu < cpu)
 			max_cpu = cpu;
 
-		font.drawText(area, " render cpu: " + std::to_string(cpu) + " (max: " + std::to_string(max_cpu) + ")");
+		font.drawText(text_overlay, " render cpu: " + std::to_string(cpu) + " (max: " + std::to_string(max_cpu) + ")");
 
 		if (last_frame_end)
 		{

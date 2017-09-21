@@ -89,6 +89,30 @@ namespace oui
 		Rectangle popRight(Ratio f)  { return popRight(width()*f); }
 		Rectangle popTop(Ratio f)    { return popTop(height()*f); }
 		Rectangle popBottom(Ratio f) { return popBottom(height()*f); }
+
+		Rectangle& shrink(float trim)
+		{
+			upperLeft.x += trim;
+			upperLeft.y += trim;
+			lowerRight.x -= trim;
+			lowerRight.y -= trim;
+			if (upperLeft.x > lowerRight.x)
+				upperLeft.x = lowerRight.x = (upperLeft.x + lowerRight.x) / 2;
+			if (upperLeft.y > lowerRight.y)
+				upperLeft.y = lowerRight.y = (upperLeft.y + lowerRight.y) / 2;
+			return *this;
+		}
+		Rectangle& shrink(Ratio f)
+		{
+			f.value = max(0, min(f.value, 1));
+			const float dx = width()*f;
+			const float dy = height()*f;
+			upperLeft.x += dx;
+			upperLeft.y += dy;
+			lowerRight.x -= dx;
+			lowerRight.y -= dy;
+			return *this;
+		}
 	};
 
 	void fill(const Rectangle&, const Color&);
