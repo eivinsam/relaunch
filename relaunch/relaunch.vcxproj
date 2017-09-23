@@ -125,6 +125,7 @@
   <ItemGroup>
     <ClCompile Include="debug.cpp" />
     <ClCompile Include="glew.c" />
+    <ClCompile Include="launchpad_router.cpp" />
     <ClCompile Include="main.cpp" />
     <ClCompile Include="oui.cpp" />
     <ClCompile Include="text.cpp" />
@@ -133,6 +134,7 @@
   <ItemGroup>
     <ClInclude Include="debug.h" />
     <ClInclude Include="oui.h" />
+    <ClInclude Include="launchpad_router.h" />
     <ClInclude Include="text.h" />
     <ClInclude Include="window.h" />
   </ItemGroup>

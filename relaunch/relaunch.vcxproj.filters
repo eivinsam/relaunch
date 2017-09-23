@@ -33,6 +33,9 @@
     <ClCompile Include="oui.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="launchpad_router.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="window.h">
@@ -45,6 +48,9 @@
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="oui.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="launchpad_router.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>
