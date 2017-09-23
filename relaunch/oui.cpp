@@ -8,10 +8,10 @@ namespace oui
 	{
 		glColor4f(color.r, color.g, color.b, color.a);
 		glBegin(GL_QUADS);
-		glVertex2f(area.upperLeft.x, area.upperLeft.y);
-		glVertex2f(area.upperLeft.x, area.lowerRight.y);
-		glVertex2f(area.lowerRight.x, area.lowerRight.y);
-		glVertex2f(area.lowerRight.x, area.upperLeft.y);
+		glVertex2f(area.min.x, area.min.y);
+		glVertex2f(area.min.x, area.max.y);
+		glVertex2f(area.max.x, area.max.y);
+		glVertex2f(area.max.x, area.min.y);
 		glEnd();
 	}
 }

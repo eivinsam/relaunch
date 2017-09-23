@@ -4,7 +4,7 @@ palette). */
 
 #define NOMINMAX
 #define WIN32_LEAN_AND_MEAN
-#include <windows.h>			/* must include this before GL/gl.h */
+#include <windowsx.h>			/* must include this before GL/gl.h */
 #include <stdio.h>
 #include <GL/glew.h>
 #include <GL/wglew.h>
@@ -19,6 +19,8 @@ palette). */
 
 static HDC _dc;
 
+oui::Input input;
+
 LONG WINAPI
 WindowProc(HWND wnd, UINT msg, WPARAM wParam, LPARAM lParam)
 {
@@ -28,13 +30,20 @@ WindowProc(HWND wnd, UINT msg, WPARAM wParam, LPARAM lParam)
 		{ WM_CLOSE, "WM_CLOSE" },
 		{ WM_DESTROY, "WM_DESTROY" },
 		{ WM_QUIT, "WM_QUIT" },
-		{ WM_CHAR, "WM_CHAR "}
+		{ WM_CHAR, "WM_CHAR "},
+		{ WM_MOUSEMOVE, "WM_MOUSEMOVE" },
+		{ WM_LBUTTONDOWN, "WM_LBUTTONDOWN" },
+		{ WM_LBUTTONUP, "WM_LBUTTONUP" },
+		{ WM_RBUTTONDOWN, "WM_RBUTTONDOWN" },
+		{ WM_RBUTTONUP, "WM_RBUTTONUP" }
 	};
 	auto found = msg_names.find(msg);
 	if (found != msg_names.end())
 		debug::println(found->second);
 	else
 		debug::println(std::to_string(msg));
+
+	auto get_point_lparam = [](LPARAM p) { return oui::Point{ float(GET_X_LPARAM(p)), float(GET_Y_LPARAM(p)) }; };
 
 	switch (msg) {
 	//case WM_PAINT:
@@ -55,9 +64,28 @@ WindowProc(HWND wnd, UINT msg, WPARAM wParam, LPARAM lParam)
 	case WM_DESTROY:
 		PostQuitMessage(0);
 		return 0;
+	case WM_MOUSEMOVE:
+		input.mouse.current = { oui::now(), get_point_lparam(lParam) };
+		return 0;
+	case WM_LBUTTONDOWN:
+		if (!input.mouse.button || input.mouse.button->up)
+			input.mouse.button = { oui::now(), get_point_lparam(lParam) };
+		return 0;
+	case WM_LBUTTONUP:
+		if (input.mouse.button)
+			input.mouse.button->up = { oui::now(), get_point_lparam(lParam) };
+		return 0;
+	case WM_RBUTTONDOWN:
+		// trigger long press by backdating the event time
+		input.mouse.button = { oui::now() - std::chrono::milliseconds(1000), get_point_lparam(lParam) };
+		return 0;
+	case WM_RBUTTONUP:
+		if (input.mouse.button)
+			input.mouse.button->up = { oui::now(), get_point_lparam(lParam) };
+		return 0;
+	default:
+		return DefWindowProc(wnd, msg, wParam, lParam);
 	}
-
-	return DefWindowProc(wnd, msg, wParam, lParam);
 }
 
 HWND
@@ -168,7 +196,15 @@ WinMain(HINSTANCE hCurrentInst, HINSTANCE hPreviousInst,
 
 	while (dispatchMessages())
 	{
-		window::update();
+		GLint viewport[4];
+		glGetIntegerv(GL_VIEWPORT, viewport);
+		oui::Rectangle area =
+		{
+			{ float(viewport[0]), float(viewport[1]) },
+			{ float(viewport[0] + viewport[2]), float(viewport[1] + viewport[3]) }
+		};
+
+		window::update(area, input);
 		SwapBuffers(_dc);
 		glFlush();
 	}

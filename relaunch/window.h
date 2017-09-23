@@ -1,5 +1,7 @@
 #pragma once
 
+#include "oui.h"
+
 namespace window
 {
 	struct Description
@@ -9,5 +11,5 @@ namespace window
 	};
 	Description initialize();
 
-	void update();
+	void update(oui::Rectangle, oui::Input&);
 }

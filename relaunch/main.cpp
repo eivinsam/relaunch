@@ -18,13 +18,14 @@ namespace window
 	}
 
 
-	void update()
+	void update(oui::Rectangle area, oui::Input& input)
 	{
 		static oui::Font font("Segoe UI", 24);
 		static std::optional<decltype(std::chrono::high_resolution_clock::now())> last_frame_end;
 		static const auto first_time = std::chrono::high_resolution_clock::now();
 		auto frame_begin = std::chrono::high_resolution_clock::now();
 		static float max_cpu = 0;
+		static std::string message;
 
 
 		glClearColor(0, 0, 0, 1);
@@ -34,17 +35,10 @@ namespace window
 		glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 
 
-		GLint viewport[4];
-		glGetIntegerv(GL_VIEWPORT, viewport);
-		oui::Rectangle area =
-		{
-			{ float(viewport[0]), float(viewport[1]) },
-			{ float(viewport[0] + viewport[2]), float(viewport[1] + viewport[3]) }
-		};
 
 		glMatrixMode(GL_PROJECTION);
 		glLoadIdentity();
-		gluOrtho2D(area.upperLeft.x, area.lowerRight.x, area.lowerRight.y, area.upperLeft.x);
+		gluOrtho2D(area.min.x, area.max.x, area.max.y, area.min.x);
 		glMatrixMode(GL_MODELVIEW);
 		glLoadIdentity();
 
@@ -65,11 +59,18 @@ namespace window
 		{
 			auto row = area.popTop(oui::Ratio(1.0f / (8 - i)));
 			for (int j = 0; j < 8; ++j)
-				fill(row.popLeft(oui::Ratio(1.0f / (8 - j))).shrink(oui::Ratio(0.85f)), 
+			{
+				const auto button_area = row.popLeft(oui::Ratio(1.0f / (8 - j)));
+				if (input.mouse.pressed(button_area))
+					message = "(" + std::to_string(i) + " " + std::to_string(j) + ")";
+				if (input.mouse.longPressed(button_area))
+					message = "[" + std::to_string(i) + " " + std::to_string(j) + "]";
+				fill(button_area.shrink(oui::Ratio(0.85f)),
 					 oui::Color{ i / 8.0f, j / 8.0f });
+			}
 		}
 
-		text_overlay.upperLeft = font.drawText(text_overlay, "Test - \xce\xa9");
+		text_overlay.min = font.drawText(text_overlay, "Test - \xce\xa9 - " + message);
 		auto frame_end = std::chrono::high_resolution_clock::now();
 		auto frame_duration = std::chrono::duration<float>(frame_end - frame_begin).count();
 		float cpu = 60 * frame_duration;

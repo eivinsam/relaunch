@@ -1,5 +1,8 @@
 #pragma once
 
+#include <optional>
+#include <chrono>
+
 namespace oui
 {
 	template <class A, class B>
@@ -41,48 +44,51 @@ namespace oui
 		friend constexpr float operator*(Ratio f, float x) { return f.value*x; }
 	};
 
+	struct Rectangle;
 	struct Point
 	{
 		float x;
 		float y;
+
+		constexpr bool in(const Rectangle&) const;
 	};
 
 	struct Rectangle
 	{
-		Point upperLeft;
-		Point lowerRight;
+		Point min; // Top left corner
+		Point max; // Bottom right corner
 
-		float height() const { return lowerRight.y - upperLeft.y; }
-		float width() const { return lowerRight.x - upperLeft.x; }
+		float height() const { return max.y - min.y; }
+		float width() const { return max.x - min.x; }
 
 		Rectangle popLeft(float dx)
 		{
-			dx = min(dx, width());
-			const float oldx = upperLeft.x;
-			upperLeft.x += dx;
-			return { { oldx, upperLeft.y }, { upperLeft.x, lowerRight.y } };
+			dx = oui::min(dx, width());
+			const float oldx = min.x;
+			min.x += dx;
+			return { { oldx, min.y }, { min.x, max.y } };
 		}
 		Rectangle popRight(float dx)
 		{
-			dx = min(dx, width());
-			const float oldx = lowerRight.x;
-			lowerRight.x -= dx;
-			return { { lowerRight.x, upperLeft.y }, { oldx, lowerRight.y } };
+			dx = oui::min(dx, width());
+			const float oldx = max.x;
+			max.x -= dx;
+			return { { max.x, min.y }, { oldx, max.y } };
 		}
 
 		Rectangle popTop(float dy)
 		{ 
-			dy = min(dy, height());
-			const float oldy = upperLeft.y;
-			upperLeft.y += dy; 
-			return { { upperLeft.x, oldy }, { lowerRight.x, upperLeft.y } }; 
+			dy = oui::min(dy, height());
+			const float oldy = min.y;
+			min.y += dy; 
+			return { { min.x, oldy }, { max.x, min.y } }; 
 		}
 		Rectangle popBottom(float dy)
 		{
-			dy = min(dy, height());
-			const float oldy = lowerRight.y;
-			lowerRight.y -= dy;
-			return { { upperLeft.x, lowerRight.y }, { lowerRight.x, oldy } };
+			dy = oui::min(dy, height());
+			const float oldy = max.y;
+			max.y -= dy;
+			return { { min.x, max.y }, { max.x, oldy } };
 		}
 
 		Rectangle popLeft(Ratio f)   { return popLeft(width()*f); }
@@ -90,30 +96,94 @@ namespace oui
 		Rectangle popTop(Ratio f)    { return popTop(height()*f); }
 		Rectangle popBottom(Ratio f) { return popBottom(height()*f); }
 
-		Rectangle& shrink(float trim)
+		Rectangle shrink(float trim) const
 		{
-			upperLeft.x += trim;
-			upperLeft.y += trim;
-			lowerRight.x -= trim;
-			lowerRight.y -= trim;
-			if (upperLeft.x > lowerRight.x)
-				upperLeft.x = lowerRight.x = (upperLeft.x + lowerRight.x) / 2;
-			if (upperLeft.y > lowerRight.y)
-				upperLeft.y = lowerRight.y = (upperLeft.y + lowerRight.y) / 2;
+			Rectangle r = *this;
+			r.min.x += trim;
+			r.min.y += trim;
+			r.max.x -= trim;
+			r.max.y -= trim;
+			if (r.min.x > r.max.x)
+				r.min.x = r.max.x = (r.min.x + r.max.x) / 2;
+			if (r.min.y > r.max.y)
+				r.min.y = r.max.y = (r.min.y + r.max.y) / 2;
 			return *this;
 		}
-		Rectangle& shrink(Ratio f)
+		Rectangle shrink(Ratio f) const
 		{
-			f.value = max(0, min(f.value, 1));
+			f.value = oui::max(0, oui::min(f.value, 1));
 			const float dx = width()*f;
 			const float dy = height()*f;
-			upperLeft.x += dx;
-			upperLeft.y += dy;
-			lowerRight.x -= dx;
-			lowerRight.y -= dy;
-			return *this;
+			return { { min.x + dx, min.y + dy }, { max.x - dx, max.y - dy } };
+		}
+	};
+	void fill(const Rectangle&, const Color&);
+
+	inline constexpr bool Point::in(const Rectangle& area) const
+	{
+		return
+			area.min.x <= x && x < area.max.x &&
+			area.min.y <= y && y < area.max.y;
+	}
+
+	template <class T>
+	using Optional = std::optional<T>;
+	using Time = std::chrono::time_point<std::chrono::high_resolution_clock>;
+
+	inline Time now() { return std::chrono::high_resolution_clock::now(); }
+	
+	inline float duration(Time t0, Time t1) { return std::chrono::duration<float>(t1 - t0).count(); }
+
+	class Pointer
+	{
+	public:
+		struct Context
+		{
+			Time time;
+			Point position;
+		};
+		struct Down : Context
+		{
+			Down(Time time, Point point) : Context{ time, point } { }
+			Optional<Context> up;
+		};
+		Optional<Context> current;
+		Optional<Down> button;
+
+		bool hovering(const Rectangle& area) const { return current && current->position.in(area); }
+		bool holding(const Rectangle& area) const
+		{
+			return hovering(area) && 
+				button && button->position.in(area);
+		}
+
+		bool pressed(const Rectangle& area)
+		{
+			if (holding(area) && button->up &&
+				button->up->position.in(area) &&
+				duration(button->time, button->up->time) < 1)
+			{
+				button.reset();
+				return true;
+			}
+			return false;
+		}
+		bool longPressed(const Rectangle& area)
+		{
+			if (holding(area) && button->up &&
+				button->up->position.in(area) &&
+				duration(button->time, button->up->time) >= 1)
+			{
+				button.reset();
+				return true;
+			}
+			return false;
 		}
 	};
 
-	void fill(const Rectangle&, const Color&);
+	class Input
+	{
+	public:
+		Pointer mouse;
+	};
 }

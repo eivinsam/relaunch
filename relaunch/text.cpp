@@ -78,7 +78,7 @@ namespace oui
 	{
 		if (height == 0)
 			height = float(_size);
-		Point head = area.upperLeft;
+		Point head = area.min;
 
 		glEnable(GL_TEXTURE_2D);
 		glBindTexture(GL_TEXTURE_2D, _tex);
