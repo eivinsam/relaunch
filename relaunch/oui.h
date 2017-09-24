@@ -18,6 +18,12 @@ namespace oui
 		float a = 1;
 	};
 
+	inline constexpr Color operator+(const Color& a, const Color& b) { return { a.r + b.r, a.g + b.g, a.b + b.b, a.a + b.a }; }
+
+	inline constexpr Color operator*(const Color& c, double s) { auto fs = float(s); return { c.r*fs, c.g*fs, c.b*fs, c.a*fs }; }
+	inline constexpr Color operator*(double s, const Color& c) { auto fs = float(s); return { c.r*fs, c.g*fs, c.b*fs, c.a*fs }; }
+	inline constexpr Color operator/(const Color& c, double s) { auto fs = float(s); return { c.r/fs, c.g/fs, c.b/fs, c.a/fs }; }
+
 	namespace colors
 	{
 		static constexpr Color black{ 0, 0, 0 };
@@ -29,7 +35,7 @@ namespace oui
 
 		static constexpr Color yellow{ 1, 1, 0 };
 		static constexpr Color cyan{ 0, 1, 1 };
-		static constexpr Color magen{ 1, 0, 1 };
+		static constexpr Color magenta{ 1, 0, 1 };
 	}
 
 
@@ -80,6 +86,8 @@ namespace oui
 		constexpr float width() const { return max.x - min.x; }
 
 		constexpr Vector size() const { return max - min; }
+
+		constexpr Point center() const { return min + (max - min) / 2; }
 
 		Rectangle popLeft(float dx)
 		{
