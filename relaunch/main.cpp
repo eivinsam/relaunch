@@ -116,13 +116,13 @@ namespace window
 
 	Description initialize()
 	{
-		return { 960, 480 };
+		return { "relaunch", 1280, 720, 4 };
 	}
 
 
 	void update(oui::Rectangle area, oui::Input& input)
 	{
-		static oui::Font font("Segoe UI", 24);
+		static oui::Font font("Segoe UI", int(24*window::dpiFactor()));
 		static std::optional<decltype(std::chrono::high_resolution_clock::now())> last_frame_end;
 		static const auto first_time = std::chrono::high_resolution_clock::now();
 		auto frame_begin = std::chrono::high_resolution_clock::now();
