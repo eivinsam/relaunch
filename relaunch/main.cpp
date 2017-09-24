@@ -5,10 +5,32 @@
 #include <chrono>
 #include <cmath>
 
+#include <GL/glew.h>
+
 #include "text.h"
 
+namespace oui
+{
+	void verticalSlider(Rectangle area, float& value, Input& input, const Color& color)
+	{
 
-#include <GL/glew.h>
+		// handle mouse drag!
+		if (auto delta = input.mouse.dragging(area))
+		{
+			value += delta->y / (area.height()*0.9f);
+			if (value < 0)
+				value = 0;
+			if (value > 1)
+				value = 1;
+		}
+
+		const float h = area.height()*0.1f;
+		area.popTop(oui::Ratio(value*0.9f));
+		fill(area.popTop(h), color);
+	}
+}
+
+
 namespace window
 {
 
