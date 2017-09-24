@@ -13,8 +13,6 @@ namespace oui
 {
 	void verticalSlider(Rectangle area, float& value, Input& input, const Color& color)
 	{
-
-		// handle mouse drag!
 		if (auto delta = input.mouse.dragging(area))
 		{
 			value += delta->y / (area.height()*0.9f);
@@ -28,6 +26,88 @@ namespace oui
 		area.popTop(oui::Ratio(value*0.9f));
 		fill(area.popTop(h), color);
 	}
+
+	class ColorPicker
+	{
+		float k_r;
+		float k_b;
+	public:
+		constexpr ColorPicker(float k_r, float k_b) : k_r(k_r), k_b(k_b) { }
+
+		Optional<Color> operator()(const Rectangle& area, const float y) const
+		{
+			auto put_point = [](const Point& p, const Color& c) { glColor3f(c.r, c.g, c.b); glVertex2f(p.x, p.y); };
+
+			const float coef[6] =
+			{
+				k_r,             // red
+				1 - k_b,         // yellow
+				1 - (k_r + k_b), // green
+				1 - k_r,         // cyan
+				k_b,             // blue
+				k_r + k_b        // magenta
+			};
+			const float ym = 1 - y;
+			float axis_max[6];
+			for (int i = 0; i < 6; ++i)
+				axis_max[i] = (y < coef[i] ? 
+							   y / coef[i] : 
+							   ym / coef[(i + 3) % 6]);
+
+			const float max_a = max(max(max(max(max(axis_max[0], axis_max[1]), axis_max[2]), axis_max[3]), axis_max[4]), axis_max[5]);
+
+			const auto c = area.center();
+			const float h = min(area.width(), area.height())/2;
+
+			static constexpr float sin3 = 0.86602540378443864676372317075294f;
+			static constexpr Vector axes[6] = 
+			{
+				{ +0.0f, -1.0f },
+				{ +sin3, -0.5f },
+				{ +sin3, +0.5f },
+				{ -0.0f, +1.0f },
+				{ -sin3, +0.5f },
+				{ -sin3, -0.5f }
+			};
+			using namespace colors;
+			static constexpr Color color[6] = { red, yellow, green, cyan, blue, magenta };
+
+			auto color_max = [&](int i)
+			{
+				const int j = i < 3 ? i + 3 : i - 3;
+				return color[i] * (y / coef[i]) + color[j] * (y - coef[i] * axis_max[i]) / coef[j];
+			};
+
+			glBegin(GL_TRIANGLE_FAN);
+			put_point(c, white*y);
+			for (int i = 0; i < 6; ++i)
+				put_point(c + h*axes[i]*axis_max[i]/max_a, color_max(i));
+			put_point(c + h*axes[0]*axis_max[0]/max_a, color_max(0));
+			glEnd();
+
+			return std::nullopt;
+		}
+	};
+
+	static constexpr ColorPicker pickColorUV(0.299f, 0.114f);
+	static constexpr ColorPicker pickColor(0.3f, 0.2f);
+
+	//Optional<Color> pickColorUV(const Rectangle& area, float y)
+	//{
+	//	static constexpr float Yr = 0.299f;
+	//	static constexpr float Yb = 0.114f;
+	//	static constexpr float Yg = 1-(Yr+Yb);
+	//	auto put_color = [y](float r, float b) { glColor3f(r, (y - (r*Yr + b*Yb)) / Yg, b);  };
+	//
+	//	glBegin(GL_QUADS);
+	//	put_color(0, 0); glVertex2f(area.min.x, area.min.y);
+	//	put_color(0, 1); glVertex2f(area.min.x, area.max.y);
+	//	put_color(1, 1); glVertex2f(area.max.x, area.max.y);
+	//	put_color(1, 0); glVertex2f(area.max.x, area.min.y);
+	//	glEnd();
+	//
+	//	return std::nullopt;
+	//}
 }
 
 
@@ -36,7 +116,7 @@ namespace window
 
 	Description initialize()
 	{
-		return { 640, 480 };
+		return { 960, 480 };
 	}
 
 
@@ -48,7 +128,6 @@ namespace window
 		auto frame_begin = std::chrono::high_resolution_clock::now();
 		static float max_cpu = 0;
 		static std::string message;
-
 
 		glClearColor(0, 0, 0, 1);
 		glClear(GL_COLOR_BUFFER_BIT);
@@ -68,9 +147,11 @@ namespace window
 
 		if (area.height() < area.width())
 		{
-			const auto half_delta = (area.width() - area.height())/2;
-			area.popLeft(half_delta);
-			area.popRight(half_delta);
+			auto right = area.popRight(area.width() - area.height());
+			static float intensity = 0.5f;
+
+			oui::verticalSlider(right.popRight(20), intensity, input, oui::colors::white);
+			oui::pickColor(right, 1-intensity);
 		}
 		else
 		{
