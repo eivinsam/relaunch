@@ -44,6 +44,19 @@ namespace oui
 		friend constexpr float operator*(Ratio f, float x) { return f.value*x; }
 	};
 
+	struct Vector
+	{
+		float x;
+		float y;
+	};
+
+	inline constexpr Vector operator+(Vector a, Vector b) { return { a.x + b.x, a.y + b.y }; }
+	inline constexpr Vector operator-(Vector a, Vector b) { return { a.x + b.x, a.y + b.y }; }
+
+	inline constexpr Vector operator*(Vector v, float c) { return { v.x*c, v.y*c }; }
+	inline constexpr Vector operator*(float c, Vector v) { return { v.x*c, v.y*c }; }
+	inline constexpr Vector operator/(Vector v, float c) { return { v.x/c, v.y/c }; }
+
 	struct Rectangle;
 	struct Point
 	{
@@ -53,13 +66,20 @@ namespace oui
 		constexpr bool in(const Rectangle&) const;
 	};
 
+	inline constexpr Point operator+(Point p, Vector v) { return { p.x + v.x, p.y + v.y }; }
+	inline constexpr Point operator-(Point p, Vector v) { return { p.x - v.x, p.y - v.y }; }
+	inline constexpr Point operator+(Vector v, Point p) { return { v.x + p.x, v.y + p.y }; }
+	inline constexpr Vector operator-(Point a, Point b) { return { a.x - b.x, a.y - b.y }; }
+	
 	struct Rectangle
 	{
 		Point min; // Top left corner
 		Point max; // Bottom right corner
 
-		float height() const { return max.y - min.y; }
-		float width() const { return max.x - min.x; }
+		constexpr float height() const { return max.y - min.y; }
+		constexpr float width() const { return max.x - min.x; }
+
+		constexpr Vector size() const { return max - min; }
 
 		Rectangle popLeft(float dx)
 		{
@@ -134,9 +154,16 @@ namespace oui
 	
 	inline float duration(Time t0, Time t1) { return std::chrono::duration<float>(t1 - t0).count(); }
 
+	template <class T>
+	Optional<T> pop(Optional<T>& op)
+	{
+		Optional<T> result;
+		std::swap(op, result);
+		return result;
+	}
+
 	class Pointer
 	{
-	public:
 		struct Context
 		{
 			Time time;
@@ -147,34 +174,69 @@ namespace oui
 			Down(Time time, Point point) : Context{ time, point } { }
 			Optional<Context> up;
 		};
-		Optional<Context> current;
-		Optional<Down> button;
+		Optional<Context> _current;
+		Optional<Vector> _delta;
+		Optional<Down> _button;
+	public:
+		void move(const Point& new_position)
+		{
+			if (_current)
+				_delta = _delta.value_or(Vector{ 0, 0 }) + (new_position - _current->position);
+			_current = { now(), new_position };
+		}
+		void press(const Point& position)
+		{
+			_button = { now(), position };
+		}
+		void longPress(const Point& position)
+		{
+			_button = { now() - std::chrono::seconds(1), position };
+		}
+		void release(const Point& position)
+		{
+			if (_button)
+				_button->up = { now(), position };
+		}
 
-		bool hovering(const Rectangle& area) const { return current && current->position.in(area); }
+		// Reset all complete states
+		void takeAll()
+		{
+			_delta = std::nullopt;
+			if (_button && _button->up)
+				_button = std::nullopt;
+		}
+
+
+		bool hovering(const Rectangle& area) const { return _current && _current->position.in(area); }
 		bool holding(const Rectangle& area) const
 		{
-			return hovering(area) && 
-				button && button->position.in(area);
+			return _button && _button->position.in(area);
+		}
+		Optional<Vector> dragging(const Rectangle& area)
+		{
+			if (holding(area))
+				return pop(_delta);
+			return std::nullopt;
 		}
 
 		bool pressed(const Rectangle& area)
 		{
-			if (holding(area) && button->up &&
-				button->up->position.in(area) &&
-				duration(button->time, button->up->time) < 1)
+			if (holding(area) && 
+				_button->up && _button->up->position.in(area) &&
+				duration(_button->time, _button->up->time) < 1)
 			{
-				button.reset();
+				_button.reset();
 				return true;
 			}
 			return false;
 		}
 		bool longPressed(const Rectangle& area)
 		{
-			if (holding(area) && button->up &&
-				button->up->position.in(area) &&
-				duration(button->time, button->up->time) >= 1)
+			if (holding(area) && 
+				_button->up && _button->up->position.in(area) &&
+				duration(_button->time, _button->up->time) >= 1)
 			{
-				button.reset();
+				_button.reset();
 				return true;
 			}
 			return false;

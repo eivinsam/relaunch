@@ -65,23 +65,20 @@ WindowProc(HWND wnd, UINT msg, WPARAM wParam, LPARAM lParam)
 		PostQuitMessage(0);
 		return 0;
 	case WM_MOUSEMOVE:
-		input.mouse.current = { oui::now(), get_point_lparam(lParam) };
+		input.mouse.move(get_point_lparam(lParam));
 		return 0;
 	case WM_LBUTTONDOWN:
-		if (!input.mouse.button || input.mouse.button->up)
-			input.mouse.button = { oui::now(), get_point_lparam(lParam) };
-		return 0;
-	case WM_LBUTTONUP:
-		if (input.mouse.button)
-			input.mouse.button->up = { oui::now(), get_point_lparam(lParam) };
+		SetCapture(wnd);
+		input.mouse.press(get_point_lparam(lParam));
 		return 0;
 	case WM_RBUTTONDOWN:
-		// trigger long press by backdating the event time
-		input.mouse.button = { oui::now() - std::chrono::milliseconds(1000), get_point_lparam(lParam) };
+		SetCapture(wnd);
+		input.mouse.longPress(get_point_lparam(lParam));
 		return 0;
+	case WM_LBUTTONUP:
 	case WM_RBUTTONUP:
-		if (input.mouse.button)
-			input.mouse.button->up = { oui::now(), get_point_lparam(lParam) };
+		ReleaseCapture();
+		input.mouse.release(get_point_lparam(lParam));
 		return 0;
 	default:
 		return DefWindowProc(wnd, msg, wParam, lParam);
@@ -182,7 +179,7 @@ WinMain(HINSTANCE hCurrentInst, HINSTANCE hPreviousInst,
 
 	auto desc = window::initialize();
 
-	_wnd = CreateOpenGLWindow("relaunch", desc.width, desc.width, PFD_TYPE_RGBA, PFD_DOUBLEBUFFER);
+	_wnd = CreateOpenGLWindow("relaunch", desc.width, desc.height, PFD_TYPE_RGBA, PFD_DOUBLEBUFFER);
 	if (_wnd == NULL)
 		return 1;
 
@@ -207,6 +204,7 @@ WinMain(HINSTANCE hCurrentInst, HINSTANCE hPreviousInst,
 		window::update(area, input);
 		SwapBuffers(_dc);
 		glFlush();
+		input.mouse.takeAll();
 	}
 
 	wglMakeCurrent(NULL, NULL);
