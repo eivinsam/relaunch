@@ -63,6 +63,11 @@ namespace oui
 	inline constexpr Vector operator*(float c, Vector v) { return { v.x*c, v.y*c }; }
 	inline constexpr Vector operator/(Vector v, float c) { return { v.x/c, v.y/c }; }
 
+	inline constexpr float   dot(Vector a, Vector b) { return a.x*b.x + a.y*b.y; }
+	inline constexpr float cross(Vector a, Vector b) { return a.x*b.y - a.y*b.x; }
+
+	inline float angle(Vector a, Vector b) { return acos(dot(a, b) / sqrt(dot(a, a)*dot(b, b))); }
+
 	struct Rectangle;
 	struct Point
 	{
@@ -216,9 +221,11 @@ namespace oui
 
 
 		bool hovering(const Rectangle& area) const { return _current && _current->position.in(area); }
-		bool holding(const Rectangle& area) const
+		Optional<Point> holding(const Rectangle& area) const
 		{
-			return _button && _button->position.in(area);
+			if (_button && _button->position.in(area))
+				return _current->position;
+			return std::nullopt;
 		}
 		Optional<Vector> dragging(const Rectangle& area)
 		{
@@ -227,16 +234,17 @@ namespace oui
 			return std::nullopt;
 		}
 
-		bool pressed(const Rectangle& area)
+		Optional<Point> pressed(const Rectangle& area)
 		{
 			if (holding(area) && 
 				_button->up && _button->up->position.in(area) &&
 				duration(_button->time, _button->up->time) < 1)
 			{
+				Point result = _button->up->position;
 				_button.reset();
-				return true;
+				return result;
 			}
-			return false;
+			return std::nullopt;
 		}
 		bool longPressed(const Rectangle& area)
 		{
