@@ -4,7 +4,7 @@
 #include <string_view>
 #include <unordered_map>
 
-#include "oui.h"
+#include <oui.h>
 
 struct HFONT__;
 typedef HFONT__* HFONT;
