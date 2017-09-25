@@ -34,7 +34,7 @@ namespace oui
 	public:
 		constexpr ColorPicker(float k_r, float k_b) : k_r(k_r), k_b(k_b) { }
 
-		Optional<Color> operator()(const Rectangle& area, const float y) const
+		Optional<Color> operator()(const Rectangle& area, const float y, oui::Input& input) const
 		{
 			auto put_point = [](const Point& p, const Color& c) { glColor3f(c.r, c.g, c.b); glVertex2f(p.x, p.y); };
 
@@ -75,9 +75,10 @@ namespace oui
 			auto color_max = [&](int i)
 			{
 				const int j = i < 3 ? i + 3 : i - 3;
-				return color[i] * (y / coef[i]) + color[j] * (y - coef[i] * axis_max[i]) / coef[j];
+				return color[i] * min(1, y / coef[i]) + color[j] * max(0, y - coef[i] * axis_max[i]) / coef[j];
 			};
 
+			fill(area, white*y);
 			glBegin(GL_TRIANGLE_FAN);
 			put_point(c, white*y);
 			for (int i = 0; i < 6; ++i)
@@ -85,29 +86,32 @@ namespace oui
 			put_point(c + h*axes[0]*axis_max[0]/max_a, color_max(0));
 			glEnd();
 
+			if (auto press_postion = input.mouse.holding(area)) if (press_postion->in(area))
+			{
+				auto press_v = *press_postion - c;
+				for (int i = 0; i < 6; ++i)
+				{
+					const int j = (i + 1) % 6;
+					const float press_ai = min(1, max_a*dot(axes[i], press_v)/(h*axis_max[i]));
+					const float press_aj = min(1, max_a*dot(axes[j], press_v)/(h*axis_max[j]));
+					const float press_ni = cross(axes[i], press_v)/(cross(axes[i], axes[j])*h*axis_max[j] / max_a);
+					const float press_nj = cross(axes[j], press_v)/(cross(axes[j], axes[i])*h*axis_max[j] / max_a);
+
+					const float press_aaj = press_aj - press_ai*dot(axes[i], axes[j]);
+
+					if (press_ai > 0 && press_aj > 0 && press_ni > 0 && press_nj > 0)
+					{
+						return Color{ press_ai, press_aj, press_ni };
+					}
+
+				}
+			}
 			return std::nullopt;
 		}
 	};
 
 	static constexpr ColorPicker pickColorUV(0.299f, 0.114f);
 	static constexpr ColorPicker pickColor(0.3f, 0.2f);
-
-	//Optional<Color> pickColorUV(const Rectangle& area, float y)
-	//{
-	//	static constexpr float Yr = 0.299f;
-	//	static constexpr float Yb = 0.114f;
-	//	static constexpr float Yg = 1-(Yr+Yb);
-	//	auto put_color = [y](float r, float b) { glColor3f(r, (y - (r*Yr + b*Yb)) / Yg, b);  };
-	//
-	//	glBegin(GL_QUADS);
-	//	put_color(0, 0); glVertex2f(area.min.x, area.min.y);
-	//	put_color(0, 1); glVertex2f(area.min.x, area.max.y);
-	//	put_color(1, 1); glVertex2f(area.max.x, area.max.y);
-	//	put_color(1, 0); glVertex2f(area.max.x, area.min.y);
-	//	glEnd();
-	//
-	//	return std::nullopt;
-	//}
 }
 
 
@@ -151,7 +155,12 @@ namespace window
 			static float intensity = 0.5f;
 
 			oui::verticalSlider(right.popRight(20), intensity, input, oui::colors::white);
-			oui::pickColor(right, 1-intensity);
+			if (auto color = oui::pickColor(right, 1 - intensity, input))
+			{
+				char buf[128];
+				buf[snprintf(buf, sizeof(buf), "#%.2f,%.2f,%.2f", color->r, color->g, color->b)] = 0;
+				message = buf;
+			}
 		}
 		else
 		{
